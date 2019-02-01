@@ -51,10 +51,6 @@
   version = "0.2.3"
 
 [[constraint]]
-  name = "github.com/golang/protobuf"
-  version = "1.1.0"
-
-[[constraint]]
   name = "github.com/google/go-cmp"
   version = "0.2.0"
 
@@ -226,10 +222,31 @@
   name = "github.com/vmware/govmomi"
   version = "0.18.0"
 
- [[constraint]] 
+ [[constraint]]
   name = "github.com/Azure/go-autorest"
   version = "10.12.0"
 
 [[constraint]]
   branch = "master"
   name = "golang.org/x/oauth2"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/docker/libnetwork"
+
+[[override]]
+  name = "github.com/vishvananda/netlink"
+  revision = "b2de5d10e38ecce8607e6b438b6d174f389a004e"
+
+[[constraint]]
+  name = "github.com/wavefronthq/wavefront-sdk-go"
+  version = "v0.9.1"
+
+[[constraint]]
+  name = "github.com/karrick/godirwalk"
+  version = "1.7.5"
+
+# Prometheus uses go modules so this transitive dependancy isn't pulled properly.
+[[override]]
+  name = "github.com/grpc-ecosystem/grpc-gateway"
+  version = "1.6.3"
