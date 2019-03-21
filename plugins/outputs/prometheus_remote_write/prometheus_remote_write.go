@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 
 	"github.com/influxdata/telegraf"
-	"github.com/influxdata/telegraf/internal"
 	"github.com/influxdata/telegraf/internal/tls"
 	"github.com/influxdata/telegraf/plugins/outputs"
 	"github.com/influxdata/telegraf/plugins/outputs/prometheus_client"
@@ -139,7 +138,7 @@ func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
 	httpReq.Header.Add("Content-Encoding", "snappy")
 	httpReq.Header.Set("Content-Type", "application/x-protobuf")
 	httpReq.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
-	httpReq.Header.Set("User-Agent", "Telegraf/"+internal.Version())
+	httpReq.Header.Set("User-Agent", "Telegraf/12345")
 	if p.BasicUsername != "" || p.BasicPassword != "" {
 		httpReq.SetBasicAuth(p.BasicUsername, p.BasicPassword)
 	}
