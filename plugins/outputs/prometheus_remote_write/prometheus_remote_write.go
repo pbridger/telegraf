@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -90,9 +91,10 @@ func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
 		for _, field := range metric.FieldList() {
 			labels := make([]prompb.Label, len(commonLabels), len(commonLabels)+1)
 			copy(labels, commonLabels)
+			renameMetrics := strings.NewReplacer(".", "_", "-", "_")
 			labels = append(labels, prompb.Label{
 				Name:  "__name__",
-				Value: metric.Name() + "_" + field.Key,
+				Value: renameMetrics.Replace(metric.Name()) + "_" + field.Key,
 			})
 			sort.Sort(byName(labels))
 
