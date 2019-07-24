@@ -253,8 +253,14 @@ func gatherInfoOutput(
 
 		val := strings.TrimSpace(parts[1])
 
+		// Some percentage values have a "%" suffix that we need to get rid of before int/float conversion
+		num_val := val
+		if strings.HasSuffix(num_val, "%") {
+			num_val = num_val[:len(num_val)-1]
+		}
+
 		// Try parsing as int
-		if ival, err := strconv.ParseInt(val, 10, 64); err == nil {
+		if ival, err := strconv.ParseInt(num_val, 10, 64); err == nil {
 			switch name {
 			case "keyspace_hits":
 				keyspace_hits = ival
@@ -269,7 +275,7 @@ func gatherInfoOutput(
 		}
 
 		// Try parsing as a float
-		if fval, err := strconv.ParseFloat(val, 64); err == nil {
+		if fval, err := strconv.ParseFloat(num_val, 64); err == nil {
 			fields[metric] = fval
 			continue
 		}
