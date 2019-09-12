@@ -26,8 +26,11 @@ Processes can be selected for monitoring using one of several methods:
   # pattern = "nginx"
   ## user as argument for pgrep (ie, pgrep -u <user>)
   # user = "nginx"
-  ## Systemd unit name
+  ## Systemd unit name. Use systemd_units when getting metrics
+  ## for several units.
   # systemd_unit = "nginx.service"
+  ## Systemd unit name array
+  # systemd_units = ["nginx.service", "haproxy.service"]
   ## CGroup name or path
   # cgroup = "systemd/system.slice/nginx.service"
 
