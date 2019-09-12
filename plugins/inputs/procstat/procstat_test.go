@@ -44,12 +44,51 @@ func TestMockExecCommand(t *testing.T) {
 	}
 	cmdline := strings.Join(cmd, " ")
 
-	if cmdline == "systemctl show TestGather_systemdUnitPIDs" {
-		fmt.Printf(`PIDFile=
-GuessMainPID=yes
-MainPID=11408
-ControlPID=0
-ExecMainPID=11408
+	if cmdline == "systemctl status" {
+		fmt.Printf(`● hostname
+    State: degraded
+     Jobs: 0 queued
+   Failed: 1 units
+    Since: Fri 2019-09-13 06:08:15 UTC; 50min ago
+   CGroup: /
+           ├─user.slice
+           │ └─user-1002.slice
+           │   ├─user@1002.service
+           │   │ └─init.scope
+           │   │   ├─3790 /usr/lib/systemd/systemd --user
+           │   │   └─3792 (sd-pam)
+           │   └─session-5.scope
+           │     ├─3819 sshd: root [priv]
+           │     ├─3822 sshd: root@pts/1
+           │     ├─3823 -bash
+           │     ├─3858 sudo -i
+           │     ├─3860 -bash
+           │     ├─7445 systemctl status
+           │     └─7446 less
+           ├─init.scope
+           │ └─1 /usr/lib/systemd/systemd --switched-root --system --deserialize 31
+           ├─system.slice
+           │ ├─systemd-udevd.service
+           │ │ └─455 /usr/lib/systemd/systemd-udevd
+           │ ├─dbus-broker.service
+           │ │ ├─538 /usr/bin/dbus-broker-launch --scope system --audit
+           │ │ └─539 dbus-broker --log 4 --controller 9 --machine-id 5305bf75e3144e22a1c4d297f26ec42d --max-bytes 536870912 --max-fds 4096 --max-matches 131072 --audit
+           │ ├─system-serial\x2dgetty.slice
+           │ │ └─serial-getty@ttyS0.service
+           │ │   └─739 /sbin/agetty -o -p -- \u --keep-baud 115200,38400,9600 ttyS0 vt220
+           │ ├─TestGather_systemdUnitPIDs.service
+           │ │ └─11408 /usr/bin/foo
+           │ │ └─11420 /usr/bin/bar
+           │ ├─chronyd.service
+           │ │ └─1931 /usr/sbin/chronyd
+           └─machine.slice
+             └─machine-foo\x2dmgmt\x2d1.scope
+               └─payload
+                 ├─init.scope
+                 │ └─2334 /usr/lib/systemd/systemd
+                 └─system.slice
+                   └─foo.service
+					 └─2371 /bin/python3 -m aiven.almond.almond
 `)
 		os.Exit(0)
 	}
@@ -363,11 +402,21 @@ func TestGather_systemdUnitPIDs(t *testing.T) {
 		createPIDFinder: pidFinder([]PID{}, nil),
 		SystemdUnit:     "TestGather_systemdUnitPIDs",
 	}
-	var acc testutil.Accumulator
-	pids, tags, err := p.findPids(&acc)
+	pidsArray, tagsArray, err := p.findPids()
 	require.NoError(t, err)
-	assert.Equal(t, []PID{11408}, pids)
-	assert.Equal(t, "TestGather_systemdUnitPIDs", tags["systemd_unit"])
+	assert.Equal(t, []PID{11408, 11420}, pidsArray[0])
+	assert.Equal(t, "TestGather_systemdUnitPIDs", tagsArray[0]["systemd_unit"])
+
+	p = Procstat{
+		createPIDFinder: pidFinder([]PID{}, nil),
+		SystemdUnits:    []string{"TestGather_systemdUnitPIDs", "foo.service"},
+	}
+	pidsArray, tagsArray, err = p.findPids()
+	require.NoError(t, err)
+	assert.Equal(t, []PID{11408, 11420}, pidsArray[0])
+	assert.Equal(t, "TestGather_systemdUnitPIDs", tagsArray[0]["systemd_unit"])
+	assert.Equal(t, []PID{2371}, pidsArray[1])
+	assert.Equal(t, "foo.service", tagsArray[1]["systemd_unit"])
 }
 
 func TestGather_cgroupPIDs(t *testing.T) {
@@ -385,11 +434,10 @@ func TestGather_cgroupPIDs(t *testing.T) {
 		createPIDFinder: pidFinder([]PID{}, nil),
 		CGroup:          td,
 	}
-	var acc testutil.Accumulator
-	pids, tags, err := p.findPids(&acc)
+	pidsArray, tagsArray, err := p.findPids()
 	require.NoError(t, err)
-	assert.Equal(t, []PID{1234, 5678}, pids)
-	assert.Equal(t, td, tags["cgroup"])
+	assert.Equal(t, []PID{1234, 5678}, pidsArray[0])
+	assert.Equal(t, td, tagsArray[0]["cgroup"])
 }
 
 func TestProcstatLookupMetric(t *testing.T) {
