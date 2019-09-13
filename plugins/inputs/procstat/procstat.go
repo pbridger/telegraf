@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/influxdata/telegraf"
@@ -22,16 +24,17 @@ var (
 type PID int32
 
 type Procstat struct {
-	PidFinder   string `toml:"pid_finder"`
-	PidFile     string `toml:"pid_file"`
-	Exe         string
-	Pattern     string
-	Prefix      string
-	ProcessName string
-	User        string
-	SystemdUnit string
-	CGroup      string `toml:"cgroup"`
-	PidTag      bool
+	PidFinder    string `toml:"pid_finder"`
+	PidFile      string `toml:"pid_file"`
+	Exe          string
+	Pattern      string
+	Prefix       string
+	ProcessName  string
+	User         string
+	SystemdUnit  string
+	SystemdUnits []string
+	CGroup       string `toml:"cgroup"`
+	PidTag       bool
 
 	finder PIDFinder
 
@@ -49,8 +52,11 @@ var sampleConfig = `
   # pattern = "nginx"
   ## user as argument for pgrep (ie, pgrep -u <user>)
   # user = "nginx"
-  ## Systemd unit name
+  ## Systemd unit name. Use systemd_units when getting metrics
+  ## for several units.
   # systemd_unit = "nginx.service"
+  ## Systemd unit name array
+  # systemd_units = ["nginx.service", "haproxy.service"]
   ## CGroup name or path
   # cgroup = "systemd/system.slice/nginx.service"
 
@@ -239,36 +245,51 @@ func (p *Procstat) addMetrics(proc Process, acc telegraf.Accumulator) {
 
 // Update monitored Processes
 func (p *Procstat) updateProcesses(acc telegraf.Accumulator, prevInfo map[PID]Process) (map[PID]Process, error) {
-	pids, tags, err := p.findPids(acc)
+	pidsArray, tagsArray, err := p.findPids()
 	if err != nil {
 		return nil, err
 	}
 
 	procs := make(map[PID]Process, len(prevInfo))
 
-	for _, pid := range pids {
-		info, ok := prevInfo[pid]
-		if ok {
-			procs[pid] = info
-		} else {
-			proc, err := p.createProcess(pid)
-			if err != nil {
-				// No problem; process may have ended after we found it
-				continue
-			}
-			procs[pid] = proc
+	for index, pids := range pidsArray {
+		tags := tagsArray[index]
 
-			// Add initial tags
-			for k, v := range tags {
-				proc.Tags()[k] = v
-			}
+		finderTags := make(map[string]string)
+		for k, v := range tags {
+			finderTags[k] = v
+		}
 
-			// Add pid tag if needed
-			if p.PidTag {
-				proc.Tags()["pid"] = strconv.Itoa(int(pid))
-			}
-			if p.ProcessName != "" {
-				proc.Tags()["process_name"] = p.ProcessName
+		// Add metric for the number of matched pids
+		fields := make(map[string]interface{})
+		finderTags["pid_finder"] = p.PidFinder
+		fields["pid_count"] = len(pids)
+		acc.AddFields("procstat_lookup", fields, tags)
+
+		for _, pid := range pids {
+			info, ok := prevInfo[pid]
+			if ok {
+				procs[pid] = info
+			} else {
+				proc, err := p.createProcess(pid)
+				if err != nil {
+					// No problem; process may have ended after we found it
+					continue
+				}
+				procs[pid] = proc
+
+				// Add initial tags
+				for k, v := range tags {
+					proc.Tags()[k] = v
+				}
+
+				// Add pid tag if needed
+				if p.PidTag {
+					proc.Tags()["pid"] = strconv.Itoa(int(pid))
+				}
+				if p.ProcessName != "" {
+					proc.Tags()["process_name"] = p.ProcessName
+				}
 			}
 		}
 	}
@@ -289,7 +310,9 @@ func (p *Procstat) getPIDFinder() (PIDFinder, error) {
 }
 
 // Get matching PIDs and their initial tags
-func (p *Procstat) findPids(acc telegraf.Accumulator) ([]PID, map[string]string, error) {
+func (p *Procstat) findPids() ([][]PID, []map[string]string, error) {
+	var pidsArray [][]PID
+	var tagsArray []map[string]string
 	var pids []PID
 	tags := make(map[string]string)
 	var err error
@@ -312,57 +335,85 @@ func (p *Procstat) findPids(acc telegraf.Accumulator) ([]PID, map[string]string,
 		pids, err = f.Uid(p.User)
 		tags = map[string]string{"user": p.User}
 	} else if p.SystemdUnit != "" {
-		pids, err = p.systemdUnitPIDs()
-		tags = map[string]string{"systemd_unit": p.SystemdUnit}
+		pidsArray, tagsArray, err = p.systemdUnitPIDs([]string{p.SystemdUnit})
+	} else if p.SystemdUnits != nil {
+		pidsArray, tagsArray, err = p.systemdUnitPIDs(p.SystemdUnits)
 	} else if p.CGroup != "" {
 		pids, err = p.cgroupPIDs()
 		tags = map[string]string{"cgroup": p.CGroup}
 	} else {
-		err = fmt.Errorf("Either exe, pid_file, user, pattern, systemd_unit, or cgroup must be specified")
+		err = fmt.Errorf("Either exe, pid_file, user, pattern, systemd_unit, systemd_units, or cgroup must be specified")
 	}
 
-	rTags := make(map[string]string)
-	for k, v := range tags {
-		rTags[k] = v
+	if pids != nil {
+		pidsArray = [][]PID{pids}
+		tagsArray = []map[string]string{tags}
 	}
 
-	//adds a metric with info on the pgrep query
-	fields := make(map[string]interface{})
-	tags["pid_finder"] = p.PidFinder
-	fields["pid_count"] = len(pids)
-	acc.AddFields("procstat_lookup", fields, tags)
-
-	return pids, rTags, err
+	return pidsArray, tagsArray, err
 }
 
 // execCommand is so tests can mock out exec.Command usage.
 var execCommand = exec.Command
 
-func (p *Procstat) systemdUnitPIDs() ([]PID, error) {
+func (p *Procstat) systemdUnitPIDs(units []string) ([][]PID, []map[string]string, error) {
+	var pidsArray [][]PID
+	var tagsArray []map[string]string
 	var pids []PID
-	cmd := execCommand("systemctl", "show", p.SystemdUnit)
+	var tags map[string]string
+	// Lines with PID look like "  ├─ 123 /usr/bin/foo" or "  └─4567 /usr/bin/bar"
+	// (possibly with some non-whitespace leading characters)
+	pidMatcher, err := regexp.Compile(`.*?[├└]─\s*(\d+)\s+\S+.*`)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Use systemctl status and parse the pids from there. This provides output that is
+	// slightly more tedious to parse than "systemctl show <unit>" output but this allows
+	// getting all pids for the unit and it works for systemd containers. Also, when
+	// several systemd units are defined this performs much better as we can make do with
+	// just a single systemctl invocation instead of one per unit.
+	cmd := execCommand("systemctl", "status")
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+LINES:
 	for _, line := range bytes.Split(out, []byte{'\n'}) {
-		kv := bytes.SplitN(line, []byte{'='}, 2)
-		if len(kv) != 2 {
-			continue
+		for _, unit := range units {
+			// Lines with unit name look like " ├─foo.service" or "  └─bar.service"
+			unitWithSuffix := unit
+			if !strings.HasSuffix(unit, ".service") {
+				unitWithSuffix = unit + ".service"
+			}
+			if bytes.HasSuffix(line, []byte("─"+unitWithSuffix)) {
+				if tags != nil && pids != nil {
+					pidsArray = append(pidsArray, pids)
+					tagsArray = append(tagsArray, tags)
+					pids = nil
+				}
+				tags = map[string]string{"systemd_unit": unit}
+				continue LINES
+			}
 		}
-		if !bytes.Equal(kv[0], []byte("MainPID")) {
-			continue
+
+		matches := pidMatcher.FindSubmatch(line)
+		if matches == nil {
+			// This was not a pid line. Presumably new unit but not one we're interested in.
+			// If we had matched some pids for a unit record those
+			if tags != nil && pids != nil {
+				pidsArray = append(pidsArray, pids)
+				tagsArray = append(tagsArray, tags)
+			}
+			pids = nil
+			tags = nil
+		} else if tags != nil {
+			// Previous line started a section for a unit we're tracking or it was another
+			// pid for that unit. Get the pid from this line too.
+			pid, _ := strconv.Atoi(string(matches[1]))
+			pids = append(pids, PID(pid))
 		}
-		if len(kv[1]) == 0 {
-			return nil, nil
-		}
-		pid, err := strconv.Atoi(string(kv[1]))
-		if err != nil {
-			return nil, fmt.Errorf("invalid pid '%s'", kv[1])
-		}
-		pids = append(pids, PID(pid))
 	}
-	return pids, nil
+	return pidsArray, tagsArray, nil
 }
 
 func (p *Procstat) cgroupPIDs() ([]PID, error) {
