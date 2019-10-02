@@ -3,7 +3,10 @@ package prometheus_remote_write
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
+	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -30,7 +33,9 @@ type PrometheusRemoteWrite struct {
 	BasicPassword string `toml:"basic_password"`
 	tls.ClientConfig
 
-	client http.Client
+	clients     []http.Client
+	nextIndex   int
+	nextResolve time.Time
 }
 
 var sampleConfig = `
@@ -50,15 +55,38 @@ var sampleConfig = `
 `
 
 func (p *PrometheusRemoteWrite) Connect() error {
+	err := p.resolveDns()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PrometheusRemoteWrite) resolveDns() error {
 	tlsConfig, err := p.ClientConfig.TLSConfig()
 	if err != nil {
 		return err
 	}
-
-	p.client = http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
+	p.clients = nil // To destroy previous objects
+	p.clients = []http.Client{}
+	urlDetails, err := url.Parse(p.URL)
+	if err != nil {
+		return err
+	}
+	ips, err := net.LookupIP(urlDetails.Hostname())
+	if err != nil {
+		return err
+	}
+	p.nextResolve = time.Now().Add(60*time.Second + time.Duration(rand.Intn(90))*time.Second)
+	for i := 0; i <= 5*len(ips); i++ {
+		p.clients = append(
+			p.clients,
+			http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: tlsConfig,
+				},
+			},
+		)
 	}
 	return nil
 }
@@ -76,6 +104,10 @@ func (p *PrometheusRemoteWrite) SampleConfig() string {
 }
 
 func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
+	p.nextIndex++
+	if p.nextIndex >= len(p.clients) {
+		p.nextIndex = 0
+	}
 	var req prompb.WriteRequest
 
 	for _, metric := range metrics {
@@ -145,7 +177,7 @@ func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
 		httpReq.SetBasicAuth(p.BasicUsername, p.BasicPassword)
 	}
 
-	resp, err := p.client.Do(httpReq)
+	resp, err := p.clients[p.nextIndex].Do(httpReq)
 	if err != nil {
 		return err
 	}
@@ -153,6 +185,12 @@ func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
 
 	if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("server returned HTTP status %s (%d)", resp.Status, resp.StatusCode)
+	}
+	if p.nextResolve.Sub(time.Now()) <= 0 {
+		err = p.resolveDns()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
