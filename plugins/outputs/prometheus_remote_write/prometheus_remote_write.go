@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -28,12 +29,14 @@ func init() {
 }
 
 type PrometheusRemoteWrite struct {
-	URL           string `toml:"url"`
-	BasicUsername string `toml:"basic_username"`
-	BasicPassword string `toml:"basic_password"`
+	URL                 string `toml:"url"`
+	BasicUsername       string `toml:"basic_username"`
+	BasicPassword       string `toml:"basic_password"`
+	MaxMetricAgeSeconds int    `toml:"max_metric_age_seconds"`
 	tls.ClientConfig
 
 	clients     []http.Client
+	hostname    string
 	nextIndex   int
 	nextResolve time.Time
 }
@@ -88,6 +91,10 @@ func (p *PrometheusRemoteWrite) resolveDns() error {
 			},
 		)
 	}
+	p.hostname, err = os.Hostname()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -110,6 +117,9 @@ func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
 	}
 	var req prompb.WriteRequest
 
+	now := time.Now()
+	oldestMetric := time.Now()
+	var oldMetrics, goodMetrics int
 	for _, metric := range metrics {
 		tags := metric.TagList()
 		commonLabels := make([]prompb.Label, 0, len(tags))
@@ -148,7 +158,14 @@ func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
 			default:
 				continue
 			}
-
+			if oldestMetric.Sub(metric.Time()) > 0 {
+				oldestMetric = metric.Time()
+			}
+			diff := now.Sub(metric.Time())
+			if diff > time.Duration(p.MaxMetricAgeSeconds)*time.Second {
+				oldMetrics += 1
+				continue
+			}
 			req.Timeseries = append(req.Timeseries, prompb.TimeSeries{
 				Labels: labels,
 				Samples: []prompb.Sample{{
@@ -156,8 +173,27 @@ func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
 					Value:     value,
 				}},
 			})
+			goodMetrics += 1
 		}
 	}
+	telegrafLabels := make([]prompb.Label, 0, 1)
+	telegrafLabels = append(
+		telegrafLabels, prompb.Label{
+			Name:  "host",
+			Value: p.hostname,
+		},
+		prompb.Label{
+			Name:  "__name__",
+			Value: "telegraf_m3_oldest_metric",
+		},
+	)
+	req.Timeseries = append(req.Timeseries, prompb.TimeSeries{
+		Labels: telegrafLabels,
+		Samples: []prompb.Sample{{
+			Timestamp: now.UnixNano() / int64(time.Millisecond),
+			Value:     now.Sub(oldestMetric).Seconds(),
+		}},
+	})
 
 	buf, err := proto.Marshal(&req)
 	if err != nil {
@@ -185,6 +221,15 @@ func (p *PrometheusRemoteWrite) Write(metrics []telegraf.Metric) error {
 
 	if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("server returned HTTP status %s (%d)", resp.Status, resp.StatusCode)
+	}
+	if oldMetrics != 0 {
+		return fmt.Errorf("sent %d metric data points to m3coordinator, dropped %d data points because older than %d seconds. "+
+			"Oldest metric was from %v",
+			goodMetrics,
+			oldMetrics,
+			p.MaxMetricAgeSeconds,
+			oldestMetric,
+		)
 	}
 	if p.nextResolve.Sub(time.Now()) <= 0 {
 		err = p.resolveDns()
