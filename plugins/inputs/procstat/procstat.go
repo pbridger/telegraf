@@ -29,14 +29,14 @@ type Procstat struct {
 	Exe          string
 	Pattern      string
 	Prefix       string
-	CmdLineTag  bool `toml:"cmdline_tag"`
+	CmdLineTag   bool `toml:"cmdline_tag"`
 	ProcessName  string
 	User         string
 	SystemdUnit  string
 	SystemdUnits []string
 	CGroup       string `toml:"cgroup"`
 	PidTag       bool
-	WinService  string `toml:"win_service"`
+	WinService   string `toml:"win_service"`
 
 	finder PIDFinder
 
@@ -205,7 +205,6 @@ func (p *Procstat) addMetrics(proc Process, acc telegraf.Accumulator) {
 		fields[prefix+"cpu_time_irq"] = cpu_time.Irq
 		fields[prefix+"cpu_time_soft_irq"] = cpu_time.Softirq
 		fields[prefix+"cpu_time_steal"] = cpu_time.Steal
-		fields[prefix+"cpu_time_stolen"] = cpu_time.Stolen
 		fields[prefix+"cpu_time_guest"] = cpu_time.Guest
 		fields[prefix+"cpu_time_guest_nice"] = cpu_time.GuestNice
 	}
