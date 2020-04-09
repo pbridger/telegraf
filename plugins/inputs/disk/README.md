@@ -15,7 +15,7 @@ https://en.wikipedia.org/wiki/Df_(Unix) for more details.
   # mount_points = ["/"]
 
   ## Ignore mount points by filesystem type.
-  ignore_fs = ["tmpfs", "devtmpfs", "devfs", "overlay", "aufs", "squashfs"]
+  ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
 ```
 
 #### Docker container
@@ -57,6 +57,11 @@ missing ensure that the `telegraf` user can read these files:
 $ sudo -u telegraf cat /proc/self/mounts | grep sda2
 /dev/sda2 /home ext4 rw,relatime,data=ordered 0 0
 $ sudo -u telegraf stat /home
+```
+
+It may be desired to use POSIX ACLs to provide additional access:
+```
+sudo setfacl -R -m u:telegraf:X /var/lib/docker/volumes/
 ```
 
 ### Example Output:

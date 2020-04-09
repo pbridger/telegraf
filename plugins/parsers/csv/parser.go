@@ -9,8 +9,11 @@ import (
 	"time"
 
 	"github.com/influxdata/telegraf"
+	"github.com/influxdata/telegraf/internal"
 	"github.com/influxdata/telegraf/metric"
 )
+
+type TimeFunc func() time.Time
 
 type Parser struct {
 	MetricName        string
@@ -30,7 +33,7 @@ type Parser struct {
 	TimeFunc          func() time.Time
 }
 
-func (p *Parser) SetTimeFunc(fn metric.TimeFunc) {
+func (p *Parser) SetTimeFunc(fn TimeFunc) {
 	p.TimeFunc = fn
 }
 
@@ -44,6 +47,7 @@ func (p *Parser) compile(r *bytes.Reader) (*csv.Reader, error) {
 	if p.Comment != "" {
 		csvReader.Comment = []rune(p.Comment)[0]
 	}
+	csvReader.TrimLeadingSpace = p.TrimSpace
 	return csvReader, nil
 }
 
@@ -203,25 +207,13 @@ outer:
 
 	// will default to plugin name
 	measurementName := p.MetricName
-	if recordFields[p.MeasurementColumn] != nil {
+	if recordFields[p.MeasurementColumn] != nil && recordFields[p.MeasurementColumn] != "" {
 		measurementName = fmt.Sprintf("%v", recordFields[p.MeasurementColumn])
 	}
 
-	metricTime := p.TimeFunc()
-	if p.TimestampColumn != "" {
-		if recordFields[p.TimestampColumn] == nil {
-			return nil, fmt.Errorf("timestamp column: %v could not be found", p.TimestampColumn)
-		}
-		tStr := fmt.Sprintf("%v", recordFields[p.TimestampColumn])
-		if p.TimestampFormat == "" {
-			return nil, fmt.Errorf("timestamp format must be specified")
-		}
-
-		var err error
-		metricTime, err = time.Parse(p.TimestampFormat, tStr)
-		if err != nil {
-			return nil, err
-		}
+	metricTime, err := parseTimestamp(p.TimeFunc, recordFields, p.TimestampColumn, p.TimestampFormat)
+	if err != nil {
+		return nil, err
 	}
 
 	m, err := metric.New(measurementName, tags, recordFields, metricTime)
@@ -231,6 +223,33 @@ outer:
 	return m, nil
 }
 
+// ParseTimestamp return a timestamp, if there is no timestamp on the csv it
+// will be the current timestamp, else it will try to parse the time according
+// to the format.
+func parseTimestamp(timeFunc func() time.Time, recordFields map[string]interface{},
+	timestampColumn, timestampFormat string,
+) (time.Time, error) {
+	if timestampColumn != "" {
+		if recordFields[timestampColumn] == nil {
+			return time.Time{}, fmt.Errorf("timestamp column: %v could not be found", timestampColumn)
+		}
+
+		switch timestampFormat {
+		case "":
+			return time.Time{}, fmt.Errorf("timestamp format must be specified")
+		default:
+			metricTime, err := internal.ParseTimestamp(timestampFormat, recordFields[timestampColumn], "UTC")
+			if err != nil {
+				return time.Time{}, err
+			}
+			return metricTime, err
+		}
+	}
+
+	return timeFunc(), nil
+}
+
+// SetDefaultTags set the DefaultTags
 func (p *Parser) SetDefaultTags(tags map[string]string) {
 	p.DefaultTags = tags
 }

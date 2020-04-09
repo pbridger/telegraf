@@ -13,12 +13,16 @@ import (
 	"sync"
 
 	"github.com/influxdata/telegraf"
+	"github.com/influxdata/telegraf/internal"
+	"github.com/influxdata/telegraf/internal/globpath"
+	"github.com/influxdata/telegraf/internal/tls"
 	"github.com/influxdata/telegraf/plugins/inputs"
 )
 
 const (
 	PF_POOL                 = "pool"
 	PF_PROCESS_MANAGER      = "process manager"
+	PF_START_SINCE          = "start since"
 	PF_ACCEPTED_CONN        = "accepted conn"
 	PF_LISTEN_QUEUE         = "listen queue"
 	PF_MAX_LISTEN_QUEUE     = "max listen queue"
@@ -35,7 +39,9 @@ type metric map[string]int64
 type poolStat map[string]metric
 
 type phpfpm struct {
-	Urls []string
+	Urls    []string
+	Timeout internal.Duration
+	tls.ClientConfig
 
 	client *http.Client
 }
@@ -58,9 +64,19 @@ var sampleConfig = `
   ##       "fcgi://10.0.0.12:9000/status"
   ##       "cgi://10.0.10.12:9001/status"
   ##
-  ## Example of multiple gathering from local socket and remove host
+  ## Example of multiple gathering from local socket and remote host
   ## urls = ["http://192.168.1.20/status", "/tmp/fpm.sock"]
   urls = ["http://localhost/status"]
+
+  ## Duration allowed to complete HTTP requests.
+  # timeout = "5s"
+
+  ## Optional TLS Config
+  # tls_ca = "/etc/telegraf/ca.pem"
+  # tls_cert = "/etc/telegraf/cert.pem"
+  # tls_key = "/etc/telegraf/key.pem"
+  ## Use TLS but skip chain & host verification
+  # insecure_skip_verify = false
 `
 
 func (r *phpfpm) SampleConfig() string {
@@ -80,7 +96,12 @@ func (g *phpfpm) Gather(acc telegraf.Accumulator) error {
 
 	var wg sync.WaitGroup
 
-	for _, serv := range g.Urls {
+	urls, err := expandUrls(g.Urls)
+	if err != nil {
+		return err
+	}
+
+	for _, serv := range urls {
 		wg.Add(1)
 		go func(serv string) {
 			defer wg.Done()
@@ -96,8 +117,17 @@ func (g *phpfpm) Gather(acc telegraf.Accumulator) error {
 // Request status page to get stat raw data and import it
 func (g *phpfpm) gatherServer(addr string, acc telegraf.Accumulator) error {
 	if g.client == nil {
-		client := &http.Client{}
-		g.client = client
+		tlsCfg, err := g.ClientConfig.TLSConfig()
+		if err != nil {
+			return err
+		}
+		tr := &http.Transport{
+			TLSClientConfig: tlsCfg,
+		}
+		g.client = &http.Client{
+			Transport: tr,
+			Timeout:   g.Timeout.Duration,
+		}
 	}
 
 	if strings.HasPrefix(addr, "http://") || strings.HasPrefix(addr, "https://") {
@@ -129,17 +159,9 @@ func (g *phpfpm) gatherServer(addr string, acc telegraf.Accumulator) error {
 			statusPath = "status"
 		}
 	} else {
-		socketAddr := strings.Split(addr, ":")
-		if len(socketAddr) >= 2 {
-			socketPath = socketAddr[0]
-			statusPath = socketAddr[1]
-		} else {
-			socketPath = socketAddr[0]
+		socketPath, statusPath = unixSocketPaths(addr)
+		if statusPath == "" {
 			statusPath = "status"
-		}
-
-		if _, err := os.Stat(socketPath); os.IsNotExist(err) {
-			return fmt.Errorf("Socket doesn't exist  '%s': %s", socketPath, err)
 		}
 		fcgi, err = newFcgiClient("unix", socketPath)
 	}
@@ -219,7 +241,8 @@ func importMetric(r io.Reader, acc telegraf.Accumulator, addr string) (poolStat,
 
 		// Start to parse metric for current pool
 		switch fieldName {
-		case PF_ACCEPTED_CONN,
+		case PF_START_SINCE,
+			PF_ACCEPTED_CONN,
 			PF_LISTEN_QUEUE,
 			PF_MAX_LISTEN_QUEUE,
 			PF_LISTEN_QUEUE_LEN,
@@ -250,6 +273,70 @@ func importMetric(r io.Reader, acc telegraf.Accumulator, addr string) (poolStat,
 	}
 
 	return stats, nil
+}
+
+func expandUrls(urls []string) ([]string, error) {
+	addrs := make([]string, 0, len(urls))
+	for _, url := range urls {
+		if isNetworkURL(url) {
+			addrs = append(addrs, url)
+			continue
+		}
+		paths, err := globUnixSocket(url)
+		if err != nil {
+			return nil, err
+		}
+		addrs = append(addrs, paths...)
+	}
+	return addrs, nil
+}
+
+func globUnixSocket(url string) ([]string, error) {
+	pattern, status := unixSocketPaths(url)
+	glob, err := globpath.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("could not compile glob %q: %v", pattern, err)
+	}
+	paths := glob.Match()
+	if len(paths) == 0 {
+		if _, err := os.Stat(paths[0]); err != nil {
+			if os.IsNotExist(err) {
+				return nil, fmt.Errorf("Socket doesn't exist  '%s': %s", pattern, err)
+			}
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	addrs := make([]string, 0, len(paths))
+
+	for _, path := range paths {
+		if status != "" {
+			status = fmt.Sprintf(":%s", status)
+		}
+		addrs = append(addrs, fmt.Sprintf("%s%s", path, status))
+	}
+
+	return addrs, nil
+}
+
+func unixSocketPaths(addr string) (string, string) {
+	var socketPath, statusPath string
+
+	socketAddr := strings.Split(addr, ":")
+	if len(socketAddr) >= 2 {
+		socketPath = socketAddr[0]
+		statusPath = socketAddr[1]
+	} else {
+		socketPath = socketAddr[0]
+		statusPath = ""
+	}
+
+	return socketPath, statusPath
+}
+
+func isNetworkURL(addr string) bool {
+	return strings.HasPrefix(addr, "http://") || strings.HasPrefix(addr, "https://") || strings.HasPrefix(addr, "fcgi://") || strings.HasPrefix(addr, "cgi://")
 }
 
 func init() {

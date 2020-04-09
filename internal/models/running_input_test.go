@@ -4,13 +4,47 @@ import (
 	"testing"
 	"time"
 
+	"github.com/influxdata/telegraf/selfstat"
+
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/metric"
 	"github.com/influxdata/telegraf/testutil"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMakeMetricFilterAfterApplyingGlobalTags(t *testing.T) {
+	now := time.Now()
+	ri := NewRunningInput(&testInput{}, &InputConfig{
+		Filter: Filter{
+			TagInclude: []string{"b"},
+		},
+	})
+	require.NoError(t, ri.Config.Filter.Compile())
+	ri.SetDefaultTags(map[string]string{"a": "x", "b": "y"})
+
+	m, err := metric.New("cpu",
+		map[string]string{},
+		map[string]interface{}{
+			"value": 42,
+		},
+		now)
+	require.NoError(t, err)
+
+	actual := ri.MakeMetric(m)
+
+	expected, err := metric.New("cpu",
+		map[string]string{
+			"b": "y",
+		},
+		map[string]interface{}{
+			"value": 42,
+		},
+		now)
+	require.NoError(t, err)
+
+	testutil.RequireMetricEqual(t, expected, actual)
+}
 
 func TestMakeMetricNoFields(t *testing.T) {
 	now := time.Now()
@@ -222,6 +256,35 @@ func TestMakeMetricNameSuffix(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, expected, m)
+}
+
+func TestMetricErrorCounters(t *testing.T) {
+	ri := NewRunningInput(&testInput{}, &InputConfig{
+		Name: "TestMetricErrorCounters",
+	})
+
+	getGatherErrors := func() int64 {
+		for _, r := range selfstat.Metrics() {
+			tag, hasTag := r.GetTag("input")
+			if r.Name() == "internal_gather" && hasTag && tag == "TestMetricErrorCounters" {
+				errCount, ok := r.GetField("errors")
+				if !ok {
+					t.Fatal("Expected error field")
+				}
+				return errCount.(int64)
+			}
+		}
+		return 0
+	}
+
+	before := getGatherErrors()
+
+	ri.Log().Error("Oh no")
+
+	after := getGatherErrors()
+
+	require.Greater(t, after, before)
+	require.GreaterOrEqual(t, int64(1), GlobalGatherErrors.Get())
 }
 
 type testInput struct{}

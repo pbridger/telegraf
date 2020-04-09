@@ -29,6 +29,7 @@ values.
 
   ## For assigning explicit data types to columns.
   ## Supported types: "int", "float", "bool", "string".
+  ## Specify types in order by column (e.g. `["string", "int", "float"]`)
   ## If this is not specified, type conversion will be done on the types above.
   csv_column_types = []
 
@@ -73,9 +74,10 @@ time using the JSON document you can use the `csv_timestamp_column` and
 `csv_timestamp_format` options together to set the time to a value in the parsed
 document.
 
-The `csv_timestamp_column` option specifies the column name containing the
-time value and `csv_timestamp_format` must be set to a Go "reference time"
-which is defined to be the specific time: `Mon Jan 2 15:04:05 MST 2006`.
+The `csv_timestamp_column` option specifies the key containing the time value and
+`csv_timestamp_format` must be set to `unix`, `unix_ms`, `unix_us`, `unix_ns`,
+or a format string in using the Go "reference time" which is defined to be the
+**specific time**: `Mon Jan 2 15:04:05 MST 2006`.
 
 Consult the Go [time][time parse] package for details and additional examples
 on how to set the time format.
@@ -84,6 +86,9 @@ on how to set the time format.
 
 One metric is created for each row with the columns added as fields.  The type
 of the field is automatically determined based on the contents of the value.
+
+In addition to the options above, you can use [metric filtering][] to skip over
+columns and rows.
 
 ### Examples
 
@@ -107,3 +112,5 @@ Output:
 ```
 cpu cpu=cpu0,time_user=42,time_system=42,time_idle=42 1536869008000000000
 ```
+
+[metric filtering]: /docs/CONFIGURATION.md#metric-filtering
