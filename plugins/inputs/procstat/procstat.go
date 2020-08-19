@@ -379,6 +379,7 @@ func (p *Procstat) systemdUnitPIDs(units []string) ([][]PID, []map[string]string
 	}
 LINES:
 	for _, line := range bytes.Split(out, []byte{'\n'}) {
+		line := bytes.TrimRight(line, "\t ")
 		for _, unit := range units {
 			// Lines with unit name look like " ├─foo.service" or "  └─bar.service"
 			unitWithSuffix := unit
