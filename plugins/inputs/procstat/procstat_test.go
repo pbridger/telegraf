@@ -79,6 +79,8 @@ func TestMockExecCommand(t *testing.T) {
            │ ├─TestGather_systemdUnitPIDs.service
            │ │ └─11408 /usr/bin/foo
            │ │ └─11420 /usr/bin/bar
+           │ ├─TestTrailingSpaces_systemdUnitPIDs.service 	
+           │ │ └─11428 /usr/bin/foo
            │ ├─chronyd.service
            │ │ └─1931 /usr/sbin/chronyd
            └─machine.slice
@@ -417,6 +419,17 @@ func TestGather_systemdUnitPIDs(t *testing.T) {
 	assert.Equal(t, "TestGather_systemdUnitPIDs", tagsArray[0]["systemd_unit"])
 	assert.Equal(t, []PID{2371}, pidsArray[1])
 	assert.Equal(t, "foo.service", tagsArray[1]["systemd_unit"])
+}
+
+func TestTrailingSpaces_systemdUnitPIDs(t *testing.T) {
+	p := Procstat{
+		createPIDFinder: pidFinder([]PID{}, nil),
+		SystemdUnit:     "TestTrailingSpaces_systemdUnitPIDs",
+	}
+	pidsArray, tagsArray, err := p.findPids()
+	require.NoError(t, err)
+	assert.Equal(t, []PID{11428}, pidsArray[0])
+	assert.Equal(t, "TestTrailingSpaces_systemdUnitPIDs", tagsArray[0]["systemd_unit"])
 }
 
 func TestGather_cgroupPIDs(t *testing.T) {
