@@ -14,6 +14,8 @@ import (
 	tlsint "github.com/influxdata/telegraf/plugins/common/tls"
 	"github.com/influxdata/telegraf/plugins/outputs"
 	"github.com/influxdata/telegraf/plugins/serializers"
+
+	"golang.org/x/net/proxy"
 )
 
 var ValidTopicSuffixMethods = []string{
@@ -38,6 +40,11 @@ type Kafka struct {
 	MaxRetry         int         `toml:"max_retry"`
 	MaxMessageBytes  int         `toml:"max_message_bytes"`
 
+	Socks5ProxyEnabled bool 	`toml:"socks5_enabled"`
+	Socks5ProxyAddress string 	`toml:"socks5_address"`
+	Socks5ProxyUsername string 	`toml:"socks5_username"`
+	Socks5ProxyPassword string 	`toml:"socks5_password"`
+	
 	Version string `toml:"version"`
 
 	// Legacy TLS config options
@@ -143,6 +150,12 @@ var sampleConfig = `
   ## the message key.  The message key is used to determine which partition to
   ## send the message to.  This tag is prefered over the routing_key option.
   routing_tag = "host"
+
+  ## SOCKS5 proxy to use when connecting to brokers
+  socks5_enabled = false
+  socks5_address = "127.0.0.1:1080"
+  socks5_username = "alice"
+  socks5_password = "pass123"
 
   ## The routing key is set as the message key and used to determine which
   ## partition to send the message to.  This value is only used when no
@@ -337,6 +350,35 @@ func (k *Kafka) Connect() error {
 
 	if err := k.SetSASLConfig(config); err != nil {
 		return err
+	}
+
+	if k.Socks5ProxyEnabled {
+		config.Net.Proxy.Enable = true
+
+		var auth *proxy.Auth
+		if k.Socks5ProxyUsername != "" {
+			auth = new(proxy.Auth)
+			auth.User = k.Socks5ProxyUsername
+			auth.Password = k.Socks5ProxyPassword
+		}
+		dialer, err := proxy.SOCKS5("tcp", k.Socks5ProxyAddress, auth, proxy.Direct)
+		if err != nil {
+			log.Fatalf("Error while connecting to proxy server: %s", err)
+			return err
+		}
+		config.Net.Proxy.Dialer = dialer
+	}
+
+	if k.SASLUsername != "" && k.SASLPassword != "" {
+		config.Net.SASL.User = k.SASLUsername
+		config.Net.SASL.Password = k.SASLPassword
+		config.Net.SASL.Enable = true
+
+		version, err := kafka.SASLVersion(config.Version, k.SASLVersion)
+		if err != nil {
+			return err
+		}
+		config.Net.SASL.Version = version
 	}
 
 	producer, err := k.producerFunc(k.Brokers, config)
