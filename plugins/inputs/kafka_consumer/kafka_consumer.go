@@ -91,6 +91,9 @@ const sampleConfig = `
   ## waiting until the next flush_interval.
   # max_undelivered_messages = 1000
 
+  ## Maximum processing time
+  # max_processing_time = "100ms"
+
   ## Data format to consume.
   ## Each data format has its own unique set of configuration options, read
   ## more about them here:
@@ -114,6 +117,7 @@ type KafkaConsumer struct {
 	ConsumerGroup          string   `toml:"consumer_group"`
 	MaxMessageLen          int      `toml:"max_message_len"`
 	MaxUndeliveredMessages int      `toml:"max_undelivered_messages"`
+	MaxProcessingTime      string   `toml:"max_processing_time"`
 	Offset                 string   `toml:"offset"`
 	BalanceStrategy        string   `toml:"balance_strategy"`
 	Topics                 []string `toml:"topics"`
@@ -239,6 +243,13 @@ func (k *KafkaConsumer) Init() error {
 
 	if k.ConsumerCreator == nil {
 		k.ConsumerCreator = &SaramaCreator{}
+	}
+
+	if k.MaxProcessingTime != "" {
+		config.Consumer.MaxProcessingTime, err = time.ParseDuration(k.MaxProcessingTime)
+		if err != nil {
+			return err
+		}
 	}
 
 	k.config = config
