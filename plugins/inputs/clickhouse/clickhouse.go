@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -589,7 +590,7 @@ func (ch *ClickHouse) execQuery(address *url.URL, query string, i interface{}) e
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 200))
+		body, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 200))
 		return &clickhouseError{
 			StatusCode: resp.StatusCode,
 			body:       body,
@@ -605,7 +606,7 @@ func (ch *ClickHouse) execQuery(address *url.URL, query string, i interface{}) e
 		return err
 	}
 
-	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+	if _, err := io.Copy(ioutil.Discard, resp.Body); err != nil {
 		return err
 	}
 	return nil

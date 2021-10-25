@@ -1,7 +1,7 @@
 package logrus
 
 import (
-	"io"
+	"io/ioutil"
 	"log"
 	"strings"
 	"sync"
@@ -19,7 +19,7 @@ type LogHook struct {
 // that directly log to the logrus system without providing an override method.
 func InstallHook() {
 	once.Do(func() {
-		logrus.SetOutput(io.Discard)
+		logrus.SetOutput(ioutil.Discard)
 		logrus.AddHook(&LogHook{})
 	})
 }

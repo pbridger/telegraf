@@ -3,7 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -933,7 +933,7 @@ func loadConfig(config string) ([]byte, error) {
 	}
 
 	// If it isn't a https scheme, try it as a file
-	return os.ReadFile(config)
+	return ioutil.ReadFile(config)
 }
 
 func fetchConfig(u *url.URL) ([]byte, error) {
@@ -964,7 +964,7 @@ func fetchConfig(u *url.URL) ([]byte, error) {
 			return nil, fmt.Errorf("Retry %d of %d failed to retrieve remote config: %s", i, retries, resp.Status)
 		}
 		defer resp.Body.Close()
-		return io.ReadAll(resp.Body)
+		return ioutil.ReadAll(resp.Body)
 	}
 
 	return nil, nil

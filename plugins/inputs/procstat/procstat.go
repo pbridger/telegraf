@@ -3,6 +3,7 @@ package procstat
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -516,7 +517,7 @@ func (p *Procstat) singleCgroupPIDs(path string) ([]PID, error) {
 		return nil, fmt.Errorf("not a directory %s", path)
 	}
 	procsPath := filepath.Join(path, "cgroup.procs")
-	out, err := os.ReadFile(procsPath)
+	out, err := ioutil.ReadFile(procsPath)
 	if err != nil {
 		return nil, err
 	}

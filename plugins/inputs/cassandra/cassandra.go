@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -217,7 +217,7 @@ func (c *Cassandra) getAttr(requestURL *url.URL) (map[string]interface{}, error)
 	}
 
 	// read body
-	body, err := io.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

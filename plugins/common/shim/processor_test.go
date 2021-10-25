@@ -3,6 +3,7 @@ package shim
 import (
 	"bufio"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"sync"
 	"testing"
@@ -83,9 +84,7 @@ func testSendAndRecieve(t *testing.T, fieldKey string, fieldValue string) {
 	val2, ok := mOut.Fields()[fieldKey]
 	require.True(t, ok)
 	require.Equal(t, fieldValue, val2)
-	go func() {
-		_, _ = io.ReadAll(r)
-	}()
+	go ioutil.ReadAll(r)
 	wg.Wait()
 }
 

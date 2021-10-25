@@ -8,7 +8,7 @@ package http_response
 import (
 	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -123,7 +123,7 @@ func setUpTestMux() http.Handler {
 		fmt.Fprintf(w, "used post correctly!")
 	})
 	mux.HandleFunc("/musthaveabody", func(w http.ResponseWriter, req *http.Request) {
-		body, err := io.ReadAll(req.Body)
+		body, err := ioutil.ReadAll(req.Body)
 		//nolint:errcheck,revive
 		req.Body.Close()
 		if err != nil {

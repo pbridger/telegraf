@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"net/url"
@@ -335,7 +336,7 @@ func (s *Sensu) write(reqBody []byte) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		bodyData, err := io.ReadAll(resp.Body)
+		bodyData, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			s.Log.Debugf("Couldn't read response body: %v", err)
 		}

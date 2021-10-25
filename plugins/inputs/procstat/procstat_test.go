@@ -2,6 +2,7 @@ package procstat
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -384,10 +385,10 @@ func TestGather_cgroupPIDs(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("no cgroups in windows")
 	}
-	td, err := os.MkdirTemp("", "")
+	td, err := ioutil.TempDir("", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(td)
-	err = os.WriteFile(filepath.Join(td, "cgroup.procs"), []byte("1234\n5678\n"), 0644)
+	err = ioutil.WriteFile(filepath.Join(td, "cgroup.procs"), []byte("1234\n5678\n"), 0644)
 	require.NoError(t, err)
 
 	p := Procstat{

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"net"
@@ -360,7 +361,7 @@ func (c *httpClient) requestBodyReader(metrics []telegraf.Metric) (io.ReadCloser
 		return rc, nil
 	}
 
-	return io.NopCloser(reader), nil
+	return ioutil.NopCloser(reader), nil
 }
 
 func (c *httpClient) addHeaders(req *http.Request) {

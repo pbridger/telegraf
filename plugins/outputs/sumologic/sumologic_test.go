@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -299,7 +300,7 @@ func TestContentEncodingGzip(t *testing.T) {
 				body, err := gzip.NewReader(r.Body)
 				require.NoError(t, err)
 
-				payload, err := io.ReadAll(body)
+				payload, err := ioutil.ReadAll(body)
 				require.NoError(t, err)
 
 				assert.Equal(t, string(payload), "metric=cpu field=value  42 0\n")

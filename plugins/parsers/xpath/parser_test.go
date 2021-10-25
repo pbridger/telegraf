@@ -1,7 +1,7 @@
 package xpath
 
 import (
-	"os"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -1233,7 +1233,7 @@ func TestTestCases(t *testing.T) {
 				pbmsgtype = protofields[1]
 			}
 
-			content, err := os.ReadFile(datafile)
+			content, err := ioutil.ReadFile(datafile)
 			require.NoError(t, err)
 
 			// Get the expectations
@@ -1266,7 +1266,7 @@ func TestTestCases(t *testing.T) {
 }
 
 func loadTestConfiguration(filename string) (*Config, []string, error) {
-	buf, err := os.ReadFile(filename)
+	buf, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, nil, err
 	}

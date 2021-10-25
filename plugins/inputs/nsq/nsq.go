@@ -25,7 +25,7 @@ package nsq
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -131,7 +131,7 @@ func (n *NSQ) gatherEndpoint(e string, acc telegraf.Accumulator) error {
 		return fmt.Errorf("%s returned HTTP status %s", u.String(), r.Status)
 	}
 
-	body, err := io.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return fmt.Errorf(`error reading body: %s`, err)
 	}

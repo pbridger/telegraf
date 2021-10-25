@@ -2,7 +2,7 @@ package internal
 
 import (
 	"bytes"
-	"io"
+	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -68,7 +68,7 @@ func TestStreamIdentityDecode(t *testing.T) {
 	dec, err := NewStreamContentDecoder("identity", &r)
 	require.NoError(t, err)
 
-	data, err := io.ReadAll(dec)
+	data, err := ioutil.ReadAll(dec)
 	require.NoError(t, err)
 
 	require.Equal(t, []byte("howdy"), data)

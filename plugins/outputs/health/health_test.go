@@ -1,7 +1,7 @@
 package health_test
 
 import (
-	"io"
+	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
@@ -121,7 +121,7 @@ func TestHealth(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedCode, resp.StatusCode)
 
-			_, err = io.ReadAll(resp.Body)
+			_, err = ioutil.ReadAll(resp.Body)
 			require.NoError(t, err)
 
 			err = output.Close()

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
@@ -273,7 +274,7 @@ func LoadConfig(filePath *string) ([]telegraf.Input, error) {
 		return DefaultImportedPlugins()
 	}
 
-	b, err := os.ReadFile(*filePath)
+	b, err := ioutil.ReadFile(*filePath)
 	if err != nil {
 		return nil, err
 	}

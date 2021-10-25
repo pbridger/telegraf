@@ -5,10 +5,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"runtime"
 	"strconv"
 	"sync"
@@ -364,7 +363,7 @@ func TestWriteGzippedData(t *testing.T) {
 	require.NoError(t, listener.Start(acc))
 	defer listener.Stop()
 
-	data, err := os.ReadFile("./testdata/testmsgs.gz")
+	data, err := ioutil.ReadFile("./testdata/testmsgs.gz")
 	require.NoError(t, err)
 
 	req, err := http.NewRequest("POST", createURL(listener, "http", "/api/v2/write", "bucket=mybucket"), bytes.NewBuffer(data))
@@ -486,7 +485,7 @@ func TestReady(t *testing.T) {
 	resp, err := http.Get(createURL(listener, "http", "/api/v2/ready", ""))
 	require.NoError(t, err)
 	require.Equal(t, "application/json", resp.Header["Content-Type"][0])
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Contains(t, string(bodyBytes), "\"status\":\"ready\"")
 	require.NoError(t, resp.Body.Close())

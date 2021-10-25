@@ -2,6 +2,7 @@ package passenger
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,7 +28,7 @@ func fakePassengerStatus(stat string) (string, error) {
 	}
 
 	tempFilePath := filepath.Join(os.TempDir(), "passenger-status"+fileExtension)
-	if err := os.WriteFile(tempFilePath, []byte(content), 0700); err != nil {
+	if err := ioutil.WriteFile(tempFilePath, []byte(content), 0700); err != nil {
 		return "", err
 	}
 

@@ -2,6 +2,7 @@ package nstat
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -61,7 +62,7 @@ func (ns *Nstat) Gather(acc telegraf.Accumulator) error {
 	// load paths, get from env if config values are empty
 	ns.loadPaths()
 
-	netstat, err := os.ReadFile(ns.ProcNetNetstat)
+	netstat, err := ioutil.ReadFile(ns.ProcNetNetstat)
 	if err != nil {
 		return err
 	}
@@ -70,14 +71,14 @@ func (ns *Nstat) Gather(acc telegraf.Accumulator) error {
 	ns.gatherNetstat(netstat, acc)
 
 	// collect SNMP data
-	snmp, err := os.ReadFile(ns.ProcNetSNMP)
+	snmp, err := ioutil.ReadFile(ns.ProcNetSNMP)
 	if err != nil {
 		return err
 	}
 	ns.gatherSNMP(snmp, acc)
 
 	// collect SNMP6 data, if SNMP6 directory exists (IPv6 enabled)
-	snmp6, err := os.ReadFile(ns.ProcNetSNMP6)
+	snmp6, err := ioutil.ReadFile(ns.ProcNetSNMP6)
 	if err == nil {
 		ns.gatherSNMP6(snmp6, acc)
 	} else if !os.IsNotExist(err) {

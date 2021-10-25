@@ -2,7 +2,7 @@ package filestack
 
 import (
 	"encoding/json"
-	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -25,7 +25,7 @@ func (fs *FilestackWebhook) Register(router *mux.Router, acc telegraf.Accumulato
 
 func (fs *FilestackWebhook) eventHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	body, err := io.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return

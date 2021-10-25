@@ -3,6 +3,7 @@ package shim
 import (
 	"bufio"
 	"io"
+	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -44,9 +45,7 @@ func TestInputShimStdinSignalingWorks(t *testing.T) {
 	require.Equal(t, "measurement,tag=tag field=1i 1234000005678\n", out)
 
 	stdinWriter.Close()
-	go func() {
-		_, _ = io.ReadAll(r)
-	}()
+	go ioutil.ReadAll(r)
 	// check that it exits cleanly
 	<-exited
 }

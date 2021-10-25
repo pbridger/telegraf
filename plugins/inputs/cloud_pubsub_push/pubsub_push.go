@@ -5,7 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
@@ -222,7 +222,7 @@ func (p *PubSubPush) serveWrite(res http.ResponseWriter, req *http.Request) {
 	}
 
 	body := http.MaxBytesReader(res, req.Body, int64(p.MaxBodySize))
-	bytes, err := io.ReadAll(body)
+	bytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		res.WriteHeader(http.StatusRequestEntityTooLarge)
 		return

@@ -5,7 +5,7 @@ import (
 	dbsql "database/sql"
 	"errors"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"sort"
 	"strings"
 	"sync"
@@ -326,7 +326,7 @@ func (s *SQL) Init() error {
 
 		// In case we got a script, we should read the query now.
 		if q.Script != "" {
-			query, err := os.ReadFile(q.Script)
+			query, err := ioutil.ReadFile(q.Script)
 			if err != nil {
 				return fmt.Errorf("reading script %q failed: %v", q.Script, err)
 			}

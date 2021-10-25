@@ -3,6 +3,7 @@ package directory_monitor
 import (
 	"bytes"
 	"compress/gzip"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,9 +20,9 @@ func TestCSVGZImport(t *testing.T) {
 	testCsvGzFile := "test.csv.gz"
 
 	// Establish process directory and finished directory.
-	finishedDirectory, err := os.MkdirTemp("", "finished")
+	finishedDirectory, err := ioutil.TempDir("", "finished")
 	require.NoError(t, err)
-	processDirectory, err := os.MkdirTemp("", "test")
+	processDirectory, err := ioutil.TempDir("", "test")
 	require.NoError(t, err)
 	defer os.RemoveAll(processDirectory)
 	defer os.RemoveAll(finishedDirectory)
@@ -61,7 +62,7 @@ func TestCSVGZImport(t *testing.T) {
 	require.NoError(t, err)
 	err = w.Close()
 	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(processDirectory, testCsvGzFile), b.Bytes(), 0666)
+	err = ioutil.WriteFile(filepath.Join(processDirectory, testCsvGzFile), b.Bytes(), 0666)
 	require.NoError(t, err)
 
 	// Start plugin before adding file.
@@ -88,9 +89,9 @@ func TestMultipleJSONFileImports(t *testing.T) {
 	testJSONFile := "test.json"
 
 	// Establish process directory and finished directory.
-	finishedDirectory, err := os.MkdirTemp("", "finished")
+	finishedDirectory, err := ioutil.TempDir("", "finished")
 	require.NoError(t, err)
-	processDirectory, err := os.MkdirTemp("", "test")
+	processDirectory, err := ioutil.TempDir("", "test")
 	require.NoError(t, err)
 	defer os.RemoveAll(processDirectory)
 	defer os.RemoveAll(finishedDirectory)

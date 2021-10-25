@@ -1,6 +1,7 @@
 package logparser
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -110,7 +111,7 @@ func TestGrokParseLogFiles(t *testing.T) {
 }
 
 func TestGrokParseLogFilesAppearLater(t *testing.T) {
-	emptydir, err := os.MkdirTemp("", "TestGrokParseLogFilesAppearLater")
+	emptydir, err := ioutil.TempDir("", "TestGrokParseLogFilesAppearLater")
 	defer os.RemoveAll(emptydir)
 	assert.NoError(t, err)
 
@@ -130,10 +131,10 @@ func TestGrokParseLogFilesAppearLater(t *testing.T) {
 
 	assert.Equal(t, acc.NFields(), 0)
 
-	input, err := os.ReadFile(filepath.Join(testdataDir, "test_a.log"))
+	input, err := ioutil.ReadFile(filepath.Join(testdataDir, "test_a.log"))
 	assert.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(emptydir, "test_a.log"), input, 0644)
+	err = ioutil.WriteFile(filepath.Join(emptydir, "test_a.log"), input, 0644)
 	assert.NoError(t, err)
 
 	assert.NoError(t, acc.GatherError(logparser.Gather))

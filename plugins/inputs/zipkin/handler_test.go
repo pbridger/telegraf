@@ -2,10 +2,9 @@ package zipkin
 
 import (
 	"bytes"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -29,7 +28,7 @@ func (m *MockRecorder) Error(err error) {
 }
 
 func TestSpanHandler(t *testing.T) {
-	dat, err := os.ReadFile("testdata/threespans.dat")
+	dat, err := ioutil.ReadFile("testdata/threespans.dat")
 	if err != nil {
 		t.Fatalf("Could not find file %s\n", "testdata/threespans.dat")
 	}
@@ -38,7 +37,7 @@ func TestSpanHandler(t *testing.T) {
 	r := httptest.NewRequest(
 		"POST",
 		"http://server.local/api/v1/spans",
-		io.NopCloser(
+		ioutil.NopCloser(
 			bytes.NewReader(dat)))
 
 	r.Header.Set("Content-Type", "application/x-thrift")

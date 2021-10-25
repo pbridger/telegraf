@@ -8,7 +8,7 @@
 package lustre2
 
 import (
-	"os"
+	"io/ioutil"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -374,7 +374,7 @@ func (l *Lustre2) GetLustreProcStats(fileglob string, wantedFields []*mapping) e
 		name := path[len(path)-2]
 
 		//lines, err := internal.ReadLines(file)
-		wholeFile, err := os.ReadFile(file)
+		wholeFile, err := ioutil.ReadFile(file)
 		if err != nil {
 			return err
 		}

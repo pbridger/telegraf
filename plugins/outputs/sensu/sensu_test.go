@@ -3,7 +3,7 @@ package sensu
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -118,7 +118,7 @@ func TestConnectAndWrite(t *testing.T) {
 			require.Equal(t, expectedURL, r.URL.String())
 			require.Equal(t, expectedAuthHeader, r.Header.Get("Authorization"))
 			// let's make sure what we received is a valid Sensu event that contains all of the expected data
-			body, err := io.ReadAll(r.Body)
+			body, err := ioutil.ReadAll(r.Body)
 			require.NoError(t, err)
 			receivedEvent := &corev2.Event{}
 			err = json.Unmarshal(body, receivedEvent)

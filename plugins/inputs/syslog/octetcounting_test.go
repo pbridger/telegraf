@@ -3,6 +3,7 @@ package syslog
 import (
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -469,7 +470,7 @@ func TestOctetCountingStrictWithZeroKeepAlive_tcp_tls(t *testing.T) {
 }
 
 func TestOctetCountingStrict_unix(t *testing.T) {
-	tmpdir, err := os.MkdirTemp("", "telegraf")
+	tmpdir, err := ioutil.TempDir("", "telegraf")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 	sock := filepath.Join(tmpdir, "syslog.TestStrict_unix.sock")
@@ -477,7 +478,7 @@ func TestOctetCountingStrict_unix(t *testing.T) {
 }
 
 func TestOctetCountingBestEffort_unix(t *testing.T) {
-	tmpdir, err := os.MkdirTemp("", "telegraf")
+	tmpdir, err := ioutil.TempDir("", "telegraf")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 	sock := filepath.Join(tmpdir, "syslog.TestBestEffort_unix.sock")
@@ -485,7 +486,7 @@ func TestOctetCountingBestEffort_unix(t *testing.T) {
 }
 
 func TestOctetCountingStrict_unix_tls(t *testing.T) {
-	tmpdir, err := os.MkdirTemp("", "telegraf")
+	tmpdir, err := ioutil.TempDir("", "telegraf")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 	sock := filepath.Join(tmpdir, "syslog.TestStrict_unix_tls.sock")
@@ -493,7 +494,7 @@ func TestOctetCountingStrict_unix_tls(t *testing.T) {
 }
 
 func TestOctetCountingBestEffort_unix_tls(t *testing.T) {
-	tmpdir, err := os.MkdirTemp("", "telegraf")
+	tmpdir, err := ioutil.TempDir("", "telegraf")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 	sock := filepath.Join(tmpdir, "syslog.TestBestEffort_unix_tls.sock")

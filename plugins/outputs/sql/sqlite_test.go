@@ -7,6 +7,7 @@ package sql
 
 import (
 	gosql "database/sql"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestSqlite(t *testing.T) {
-	outDir, err := os.MkdirTemp("", "tg-sqlite-*")
+	outDir, err := ioutil.TempDir("", "tg-sqlite-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(outDir)
 

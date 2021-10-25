@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -149,7 +149,7 @@ func (c *Client) read(requests []ReadRequest) ([]ReadResponse, error) {
 			c.URL, resp.StatusCode, http.StatusText(resp.StatusCode), http.StatusOK, http.StatusText(http.StatusOK))
 	}
 
-	responseBody, err := io.ReadAll(resp.Body)
+	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

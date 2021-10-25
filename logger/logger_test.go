@@ -3,6 +3,7 @@ package logger
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 )
 
 func TestWriteLogToFile(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "")
+	tmpfile, err := ioutil.TempFile("", "")
 	assert.NoError(t, err)
 	defer func() { os.Remove(tmpfile.Name()) }()
 
@@ -23,13 +24,13 @@ func TestWriteLogToFile(t *testing.T) {
 	log.Printf("I! TEST")
 	log.Printf("D! TEST") // <- should be ignored
 
-	f, err := os.ReadFile(tmpfile.Name())
+	f, err := ioutil.ReadFile(tmpfile.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, f[19:], []byte("Z I! TEST\n"))
 }
 
 func TestDebugWriteLogToFile(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "")
+	tmpfile, err := ioutil.TempFile("", "")
 	assert.NoError(t, err)
 	defer func() { os.Remove(tmpfile.Name()) }()
 	config := createBasicLogConfig(tmpfile.Name())
@@ -37,13 +38,13 @@ func TestDebugWriteLogToFile(t *testing.T) {
 	SetupLogging(config)
 	log.Printf("D! TEST")
 
-	f, err := os.ReadFile(tmpfile.Name())
+	f, err := ioutil.ReadFile(tmpfile.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, f[19:], []byte("Z D! TEST\n"))
 }
 
 func TestErrorWriteLogToFile(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "")
+	tmpfile, err := ioutil.TempFile("", "")
 	assert.NoError(t, err)
 	defer func() { os.Remove(tmpfile.Name()) }()
 	config := createBasicLogConfig(tmpfile.Name())
@@ -52,13 +53,13 @@ func TestErrorWriteLogToFile(t *testing.T) {
 	log.Printf("E! TEST")
 	log.Printf("I! TEST") // <- should be ignored
 
-	f, err := os.ReadFile(tmpfile.Name())
+	f, err := ioutil.ReadFile(tmpfile.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, f[19:], []byte("Z E! TEST\n"))
 }
 
 func TestAddDefaultLogLevel(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "")
+	tmpfile, err := ioutil.TempFile("", "")
 	assert.NoError(t, err)
 	defer func() { os.Remove(tmpfile.Name()) }()
 	config := createBasicLogConfig(tmpfile.Name())
@@ -66,13 +67,13 @@ func TestAddDefaultLogLevel(t *testing.T) {
 	SetupLogging(config)
 	log.Printf("TEST")
 
-	f, err := os.ReadFile(tmpfile.Name())
+	f, err := ioutil.ReadFile(tmpfile.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, f[19:], []byte("Z I! TEST\n"))
 }
 
 func TestWriteToTruncatedFile(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "")
+	tmpfile, err := ioutil.TempFile("", "")
 	assert.NoError(t, err)
 	defer func() { os.Remove(tmpfile.Name()) }()
 	config := createBasicLogConfig(tmpfile.Name())
@@ -80,7 +81,7 @@ func TestWriteToTruncatedFile(t *testing.T) {
 	SetupLogging(config)
 	log.Printf("TEST")
 
-	f, err := os.ReadFile(tmpfile.Name())
+	f, err := ioutil.ReadFile(tmpfile.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, f[19:], []byte("Z I! TEST\n"))
 
@@ -90,13 +91,13 @@ func TestWriteToTruncatedFile(t *testing.T) {
 
 	log.Printf("SHOULD BE FIRST")
 
-	f, err = os.ReadFile(tmpfile.Name())
+	f, err = ioutil.ReadFile(tmpfile.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, f[19:], []byte("Z I! SHOULD BE FIRST\n"))
 }
 
 func TestWriteToFileInRotation(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "LogRotation")
+	tempDir, err := ioutil.TempDir("", "LogRotation")
 	require.NoError(t, err)
 	cfg := createBasicLogConfig(filepath.Join(tempDir, "test.log"))
 	cfg.LogTarget = LogTargetFile
@@ -109,7 +110,7 @@ func TestWriteToFileInRotation(t *testing.T) {
 
 	log.Printf("I! TEST 1") // Writes 31 bytes, will rotate
 	log.Printf("I! TEST")   // Writes 29 byes, no rotation expected
-	files, _ := os.ReadDir(tempDir)
+	files, _ := ioutil.ReadDir(tempDir)
 	assert.Equal(t, 2, len(files))
 }
 

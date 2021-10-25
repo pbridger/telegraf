@@ -6,7 +6,7 @@ import (
 	"compress/zlib"
 	"context"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"math/big"
 	"strings"
 	"sync"
@@ -356,7 +356,7 @@ func processGzip(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer zipData.Close()
-	return io.ReadAll(zipData)
+	return ioutil.ReadAll(zipData)
 }
 
 func processZlib(data []byte) ([]byte, error) {
@@ -365,7 +365,7 @@ func processZlib(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer zlibData.Close()
-	return io.ReadAll(zlibData)
+	return ioutil.ReadAll(zlibData)
 }
 
 func processNoOp(data []byte) ([]byte, error) {

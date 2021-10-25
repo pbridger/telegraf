@@ -1,6 +1,7 @@
 package syslog
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -45,7 +46,7 @@ func TestAddress(t *testing.T) {
 	require.EqualError(t, err, "unknown protocol 'unsupported' in 'example.com:6514'")
 	require.Error(t, err)
 
-	tmpdir, err := os.MkdirTemp("", "telegraf")
+	tmpdir, err := ioutil.TempDir("", "telegraf")
 	defer os.RemoveAll(tmpdir)
 	require.NoError(t, err)
 	sock := filepath.Join(tmpdir, "syslog.TestAddress.sock")

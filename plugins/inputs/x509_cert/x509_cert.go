@@ -7,14 +7,13 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/pion/dtls/v2"
+	"io/ioutil"
 	"net"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/pion/dtls/v2"
 
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/config"
@@ -177,7 +176,7 @@ func (c *X509Cert) getCert(u *url.URL, timeout time.Duration) ([]*x509.Certifica
 
 		return certs, nil
 	case "file":
-		content, err := os.ReadFile(u.Path)
+		content, err := ioutil.ReadFile(u.Path)
 		if err != nil {
 			return nil, err
 		}

@@ -3,7 +3,7 @@ package proxmox
 import (
 	"encoding/json"
 	"errors"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -115,7 +115,7 @@ func performRequest(px *Proxmox, apiURL string, method string, data url.Values) 
 	}
 	defer resp.Body.Close()
 
-	responseBody, err := io.ReadAll(resp.Body)
+	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

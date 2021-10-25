@@ -3,6 +3,7 @@ package starlark
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -3193,7 +3194,7 @@ func TestAllScriptTestData(t *testing.T) {
 			}
 			fn := path
 			t.Run(fn, func(t *testing.T) {
-				b, err := os.ReadFile(fn)
+				b, err := ioutil.ReadFile(fn)
 				require.NoError(t, err)
 				lines := strings.Split(string(b), "\n")
 				inputMetrics := parseMetricsFrom(t, lines, "Example Input:")

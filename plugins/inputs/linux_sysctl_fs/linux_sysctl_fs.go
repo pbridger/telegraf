@@ -3,6 +3,7 @@ package linux_sysctl_fs
 import (
 	"bytes"
 	"errors"
+	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -28,7 +29,7 @@ func (sfs SysctlFS) SampleConfig() string {
 }
 
 func (sfs *SysctlFS) gatherList(file string, fields map[string]interface{}, fieldNames ...string) error {
-	bs, err := os.ReadFile(sfs.path + "/" + file)
+	bs, err := ioutil.ReadFile(sfs.path + "/" + file)
 	if err != nil {
 		// Ignore non-existing entries
 		if errors.Is(err, os.ErrNotExist) {
@@ -57,7 +58,7 @@ func (sfs *SysctlFS) gatherList(file string, fields map[string]interface{}, fiel
 }
 
 func (sfs *SysctlFS) gatherOne(name string, fields map[string]interface{}) error {
-	bs, err := os.ReadFile(sfs.path + "/" + name)
+	bs, err := ioutil.ReadFile(sfs.path + "/" + name)
 	if err != nil {
 		// Ignore non-existing entries
 		if errors.Is(err, os.ErrNotExist) {

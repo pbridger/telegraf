@@ -2,7 +2,7 @@ package procstat
 
 import (
 	"fmt"
-	"os"
+	"io/ioutil"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -25,7 +25,7 @@ func NewPgrep() (PIDFinder, error) {
 
 func (pg *Pgrep) PidFile(path string) ([]PID, error) {
 	var pids []PID
-	pidString, err := os.ReadFile(path)
+	pidString, err := ioutil.ReadFile(path)
 	if err != nil {
 		return pids, fmt.Errorf("Failed to read pidfile '%s'. Error: '%s'",
 			path, err)

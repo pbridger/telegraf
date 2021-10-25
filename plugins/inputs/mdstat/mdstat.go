@@ -20,6 +20,7 @@ package mdstat
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"sort"
@@ -290,7 +291,7 @@ func (k *MdstatConf) getProcMdstat() ([]byte, error) {
 		return nil, err
 	}
 
-	data, err := os.ReadFile(mdStatFile)
+	data, err := ioutil.ReadFile(mdStatFile)
 	if err != nil {
 		return nil, err
 	}

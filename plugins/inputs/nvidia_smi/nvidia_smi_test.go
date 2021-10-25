@@ -1,7 +1,7 @@
 package nvidia_smi
 
 import (
-	"os"
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 	"time"
@@ -139,7 +139,7 @@ func TestGatherValidXML(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var acc testutil.Accumulator
 
-			octets, err := os.ReadFile(filepath.Join("testdata", tt.filename))
+			octets, err := ioutil.ReadFile(filepath.Join("testdata", tt.filename))
 			require.NoError(t, err)
 
 			err = gatherNvidiaSMI(octets, &acc)

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -488,7 +489,7 @@ func (c *httpClient) requestBodyReader(metrics []telegraf.Metric) (io.ReadCloser
 		return rc, nil
 	}
 
-	return io.NopCloser(reader), nil
+	return ioutil.NopCloser(reader), nil
 }
 
 func (c *httpClient) addHeaders(req *http.Request) {
@@ -502,13 +503,13 @@ func (c *httpClient) addHeaders(req *http.Request) {
 }
 
 func (c *httpClient) validateResponse(response io.ReadCloser) (io.ReadCloser, error) {
-	bodyBytes, err := io.ReadAll(response)
+	bodyBytes, err := ioutil.ReadAll(response)
 	if err != nil {
 		return nil, err
 	}
 	defer response.Close()
 
-	originalResponse := io.NopCloser(bytes.NewBuffer(bodyBytes))
+	originalResponse := ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	// Empty response is valid.
 	if response == http.NoBody || len(bodyBytes) == 0 || bodyBytes == nil {

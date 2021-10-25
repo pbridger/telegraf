@@ -6,6 +6,7 @@ package kernel_vmstat
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -60,7 +61,7 @@ func (k *KernelVmstat) getProcVmstat() ([]byte, error) {
 		return nil, err
 	}
 
-	data, err := os.ReadFile(k.statFile)
+	data, err := ioutil.ReadFile(k.statFile)
 	if err != nil {
 		return nil, err
 	}

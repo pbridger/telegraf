@@ -6,6 +6,7 @@ package kernel
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -40,7 +41,7 @@ func (k *Kernel) Gather(acc telegraf.Accumulator) error {
 		return err
 	}
 
-	entropyData, err := os.ReadFile(k.entropyStatFile)
+	entropyData, err := ioutil.ReadFile(k.entropyStatFile)
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func (k *Kernel) getProcStat() ([]byte, error) {
 		return nil, err
 	}
 
-	data, err := os.ReadFile(k.statFile)
+	data, err := ioutil.ReadFile(k.statFile)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,7 @@ package neptuneapex
 import (
 	"encoding/xml"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"strconv"
@@ -276,7 +276,7 @@ func (n *NeptuneApex) sendRequest(server string) ([]byte, error) {
 			url, resp.StatusCode, http.StatusText(resp.StatusCode),
 			http.StatusOK, http.StatusText(http.StatusOK))
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read output from %q: %v", url, err)
 	}

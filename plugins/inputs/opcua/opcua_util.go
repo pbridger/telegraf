@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/big"
 	"net"
@@ -26,7 +27,7 @@ import (
 // SELF SIGNED CERT FUNCTIONS
 
 func newTempDir() (string, error) {
-	dir, err := os.MkdirTemp("", "ssc")
+	dir, err := ioutil.TempDir("", "ssc")
 	return dir, err
 }
 
