@@ -331,7 +331,7 @@ func (k *Kafka) Connect() error {
 		k.saramaConfig.Net.SASL.Password = k.SASLPassword
 		k.saramaConfig.Net.SASL.Enable = true
 
-		version, err := kafka.SASLVersion(config.Version, k.SASLVersion)
+		version, err := kafka.SASLVersion(k.saramaConfig.Version, k.SASLVersion)
 		if err != nil {
 			return err
 		}
