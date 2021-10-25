@@ -35,11 +35,11 @@ type Kafka struct {
 	RequiredAcks    int         `toml:"required_acks"`
 	MaxRetry        int         `toml:"max_retry"`
 
-	Socks5ProxyEnabled bool 	`toml:"socks5_enabled"`
-	Socks5ProxyAddress string 	`toml:"socks5_address"`
-	Socks5ProxyUsername string 	`toml:"socks5_username"`
-	Socks5ProxyPassword string 	`toml:"socks5_password"`
-	
+	Socks5ProxyEnabled  bool   `toml:"socks5_enabled"`
+	Socks5ProxyAddress  string `toml:"socks5_address"`
+	Socks5ProxyUsername string `toml:"socks5_username"`
+	Socks5ProxyPassword string `toml:"socks5_password"`
+
 	Version string `toml:"version"`
 
 	// Legacy TLS config options
