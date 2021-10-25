@@ -211,6 +211,7 @@ func (k *KafkaConsumer) Init() error {
 	}
 
 	if k.MaxProcessingTime != "" {
+		var err error
 		config.Consumer.MaxProcessingTime, err = time.ParseDuration(k.MaxProcessingTime)
 		if err != nil {
 			return err
