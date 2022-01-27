@@ -9,6 +9,8 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/gofrs/uuid"
 
+	"golang.org/x/net/proxy"
+
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/common/kafka"
 	"github.com/influxdata/telegraf/plugins/outputs"
@@ -31,6 +33,11 @@ type Kafka struct {
 	TopicSuffix     TopicSuffix `toml:"topic_suffix"`
 	RoutingTag      string      `toml:"routing_tag"`
 	RoutingKey      string      `toml:"routing_key"`
+
+	Socks5ProxyEnabled  bool   `toml:"socks5_enabled"`
+	Socks5ProxyAddress  string `toml:"socks5_address"`
+	Socks5ProxyUsername string `toml:"socks5_username"`
+	Socks5ProxyPassword string `toml:"socks5_password"`
 
 	// Legacy TLS config options
 	// TLS client certificate
@@ -130,6 +137,12 @@ var sampleConfig = `
   ## the message key.  The message key is used to determine which partition to
   ## send the message to.  This tag is prefered over the routing_key option.
   routing_tag = "host"
+
+  ## SOCKS5 proxy to use when connecting to brokers
+  # socks5_enabled = false
+  # socks5_address = "127.0.0.1:1080"
+  # socks5_username = "alice"
+  # socks5_password = "pass123"
 
   ## The routing key is set as the message key and used to determine which
   ## partition to send the message to.  This value is only used when no
@@ -278,6 +291,34 @@ func (k *Kafka) Init() error {
 		return err
 	}
 	config := sarama.NewConfig()
+
+	if k.Socks5ProxyEnabled {
+		config.Net.Proxy.Enable = true
+
+		var auth *proxy.Auth
+		if k.Socks5ProxyUsername != "" {
+			auth = new(proxy.Auth)
+			auth.User = k.Socks5ProxyUsername
+			auth.Password = k.Socks5ProxyPassword
+		}
+		dialer, err := proxy.SOCKS5("tcp", k.Socks5ProxyAddress, auth, proxy.Direct)
+		if err != nil {
+			return err
+		}
+		config.Net.Proxy.Dialer = dialer
+	}
+
+	if k.SASLUsername != "" && k.SASLPassword != "" {
+		config.Net.SASL.User = k.SASLUsername
+		config.Net.SASL.Password = k.SASLPassword
+		config.Net.SASL.Enable = true
+
+		version, err := kafka.SASLVersion(config.Version, k.SASLVersion)
+		if err != nil {
+			return err
+		}
+		config.Net.SASL.Version = version
+	}
 
 	if err := k.SetConfig(config); err != nil {
 		return err
