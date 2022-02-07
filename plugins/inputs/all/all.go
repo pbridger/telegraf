@@ -2,7 +2,6 @@ package all
 
 import (
 	_ "github.com/influxdata/telegraf/plugins/inputs/cpu"
-	_ "github.com/influxdata/telegraf/plugins/inputs/dcos"
 	_ "github.com/influxdata/telegraf/plugins/inputs/disk"
 	_ "github.com/influxdata/telegraf/plugins/inputs/diskio"
 	_ "github.com/influxdata/telegraf/plugins/inputs/dmcache"
@@ -14,10 +13,6 @@ import (
 	_ "github.com/influxdata/telegraf/plugins/inputs/filecount"
 	_ "github.com/influxdata/telegraf/plugins/inputs/filestat"
 	_ "github.com/influxdata/telegraf/plugins/inputs/hddtemp"
-	_ "github.com/influxdata/telegraf/plugins/inputs/http"
-	_ "github.com/influxdata/telegraf/plugins/inputs/http_listener_v2"
-	_ "github.com/influxdata/telegraf/plugins/inputs/http_response"
-	_ "github.com/influxdata/telegraf/plugins/inputs/httpjson"
 	_ "github.com/influxdata/telegraf/plugins/inputs/internal"
 	_ "github.com/influxdata/telegraf/plugins/inputs/interrupts"
 	_ "github.com/influxdata/telegraf/plugins/inputs/ipmi_sensor"
@@ -35,7 +30,6 @@ import (
 	_ "github.com/influxdata/telegraf/plugins/inputs/nstat"
 	_ "github.com/influxdata/telegraf/plugins/inputs/nvidia_smi"
 	_ "github.com/influxdata/telegraf/plugins/inputs/pgbouncer"
-	_ "github.com/influxdata/telegraf/plugins/inputs/ping"
 	_ "github.com/influxdata/telegraf/plugins/inputs/postgresql"
 	_ "github.com/influxdata/telegraf/plugins/inputs/postgresql_extensible"
 	_ "github.com/influxdata/telegraf/plugins/inputs/processes"

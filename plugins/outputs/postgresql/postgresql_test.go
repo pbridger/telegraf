@@ -1,68 +1,159 @@
+//+build fixlater
+
 package postgresql
 
 import (
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/metric"
-
+	"github.com/influxdata/telegraf/plugins/outputs/postgresql/columns"
+	"github.com/influxdata/telegraf/plugins/outputs/postgresql/db"
+	"github.com/influxdata/telegraf/plugins/outputs/postgresql/utils"
+	"github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/stdlib"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPostgresqlQuote(t *testing.T) {
-	assert.Equal(t, `"foo"`, quoteIdent("foo"))
-	assert.Equal(t, `"fo'o"`, quoteIdent("fo'o"))
-	assert.Equal(t, `"fo""o"`, quoteIdent("fo\"o"))
-
-	assert.Equal(t, "'foo'", quoteLiteral("foo"))
-	assert.Equal(t, "'fo''o'", quoteLiteral("fo'o"))
-	assert.Equal(t, "'fo\"o'", quoteLiteral("fo\"o"))
+func TestPostgresqlMetricsFromMeasure(t *testing.T) {
+	postgreSQL, metrics, metricIndices := prepareAllColumnsInOnePlaceNoJSON()
+	err := postgreSQL.writeMetricsFromMeasure(metrics[0].Name(), metricIndices["m"], metrics)
+	assert.NoError(t, err)
+	postgreSQL, metrics, metricIndices = prepareAllColumnsInOnePlaceTagsAndFieldsJSON()
+	err = postgreSQL.writeMetricsFromMeasure(metrics[0].Name(), metricIndices["m"], metrics)
+	assert.NoError(t, err)
 }
 
-func TestPostgresqlCreateStatement(t *testing.T) {
-	p := newPostgresql()
-	timestamp := time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC)
-
-	var m telegraf.Metric
-	m, _ = metric.New("m", nil, map[string]interface{}{"f": float64(3.14)}, timestamp)
-	assert.Equal(t, `CREATE TABLE IF NOT EXISTS "public"."m"(time timestamptz,fields jsonb)`, p.generateCreateTable(m))
-
-	m, _ = metric.New("m", map[string]string{"k": "v"}, map[string]interface{}{"i": int(3)}, timestamp)
-	assert.Equal(t, `CREATE TABLE IF NOT EXISTS "public"."m"(time timestamptz,tags jsonb,fields jsonb)`, p.generateCreateTable(m))
-
-	p.TagsAsJsonb = false
-	p.FieldsAsJsonb = false
-
-	m, _ = metric.New("m", nil, map[string]interface{}{"f": float64(3.14)}, timestamp)
-	assert.Equal(t, `CREATE TABLE IF NOT EXISTS "public"."m"(time timestamptz,"f" float8)`, p.generateCreateTable(m))
-
-	m, _ = metric.New("m", nil, map[string]interface{}{"i": int(3)}, timestamp)
-	assert.Equal(t, `CREATE TABLE IF NOT EXISTS "public"."m"(time timestamptz,"i" int8)`, p.generateCreateTable(m))
-
-	m, _ = metric.New("m", map[string]string{"k": "v"}, map[string]interface{}{"i": int(3)}, timestamp)
-	assert.Equal(t, `CREATE TABLE IF NOT EXISTS "public"."m"(time timestamptz,"k" text,"i" int8)`, p.generateCreateTable(m))
-
+func TestPostgresqlIsAliveCalledOnWrite(t *testing.T) {
+	postgreSQL, metrics, _ := prepareAllColumnsInOnePlaceNoJSON()
+	mockedDb := postgreSQL.db.(*mockDb)
+	mockedDb.isAliveResponses = []bool{true}
+	err := postgreSQL.Write(metrics[:1])
+	assert.NoError(t, err)
+	assert.Equal(t, 1, mockedDb.currentIsAliveResponse)
 }
 
-func TestPostgresqlInsertStatement(t *testing.T) {
-	p := newPostgresql()
+func prepareAllColumnsInOnePlaceNoJSON() (*Postgresql, []telegraf.Metric, map[string][]int) {
+	oneMetric, _ := metric.New("m", map[string]string{"t": "tv"}, map[string]interface{}{"f": 1}, time.Now())
+	twoMetric, _ := metric.New("m", map[string]string{"t2": "tv2"}, map[string]interface{}{"f2": 2}, time.Now())
+	threeMetric, _ := metric.New("m", map[string]string{"t": "tv", "t2": "tv2"}, map[string]interface{}{"f": 3, "f2": 4}, time.Now())
 
-	p.TagsAsJsonb = false
-	p.FieldsAsJsonb = false
+	return &Postgresql{
+			TagTableSuffix:  "_tag",
+			DoSchemaUpdates: true,
+			tables:          &mockTables{t: map[string]bool{"m": true}, missingCols: []int{}},
+			rows:            &mockTransformer{rows: [][]interface{}{nil, nil, nil}},
+			columns:         columns.NewMapper(false, false, false),
+			db:              &mockDb{},
+			dbConnLock:      sync.Mutex{},
+		}, []telegraf.Metric{
+			oneMetric, twoMetric, threeMetric,
+		}, map[string][]int{
+			"m": []int{0, 1, 2},
+		}
+}
 
-	sql := p.generateInsert("m", []string{"time", "f"})
-	assert.Equal(t, `INSERT INTO "public"."m"("time","f") VALUES($1,$2)`, sql)
+func prepareAllColumnsInOnePlaceTagsAndFieldsJSON() (*Postgresql, []telegraf.Metric, map[string][]int) {
+	oneMetric, _ := metric.New("m", map[string]string{"t": "tv"}, map[string]interface{}{"f": 1}, time.Now())
+	twoMetric, _ := metric.New("m", map[string]string{"t2": "tv2"}, map[string]interface{}{"f2": 2}, time.Now())
+	threeMetric, _ := metric.New("m", map[string]string{"t": "tv", "t2": "tv2"}, map[string]interface{}{"f": 3, "f2": 4}, time.Now())
 
-	sql = p.generateInsert("m", []string{"time", "i"})
-	assert.Equal(t, `INSERT INTO "public"."m"("time","i") VALUES($1,$2)`, sql)
+	return &Postgresql{
+			TagTableSuffix:    "_tag",
+			DoSchemaUpdates:   true,
+			TagsAsForeignkeys: false,
+			TagsAsJsonb:       true,
+			FieldsAsJsonb:     true,
+			dbConnLock:        sync.Mutex{},
+			tables:            &mockTables{t: map[string]bool{"m": true}, missingCols: []int{}},
+			columns:           columns.NewMapper(false, true, true),
+			rows:              &mockTransformer{rows: [][]interface{}{nil, nil, nil}},
+			db:                &mockDb{},
+		}, []telegraf.Metric{
+			oneMetric, twoMetric, threeMetric,
+		}, map[string][]int{
+			"m": []int{0, 1, 2},
+		}
+}
 
-	sql = p.generateInsert("m", []string{"time", "f", "i"})
-	assert.Equal(t, `INSERT INTO "public"."m"("time","f","i") VALUES($1,$2,$3)`, sql)
+type mockTables struct {
+	t           map[string]bool
+	createErr   error
+	missingCols []int
+	mismatchErr error
+	addColsErr  error
+}
 
-	sql = p.generateInsert("m", []string{"time", "k", "i"})
-	assert.Equal(t, `INSERT INTO "public"."m"("time","k","i") VALUES($1,$2,$3)`, sql)
+func (m *mockTables) Exists(tableName string) bool {
+	return m.t[tableName]
+}
+func (m *mockTables) CreateTable(tableName string, colDetails *utils.TargetColumns) error {
+	if m.createErr != nil {
+		return m.createErr
+	}
+	m.t[tableName] = true
+	return nil
+}
+func (m *mockTables) FindColumnMismatch(tableName string, colDetails *utils.TargetColumns) ([]int, error) {
+	return m.missingCols, m.mismatchErr
+}
+func (m *mockTables) AddColumnsToTable(tableName string, columnIndices []int, colDetails *utils.TargetColumns) error {
+	return m.addColsErr
+}
+func (m *mockTables) SetConnection(db db.Wrapper) {}
 
-	sql = p.generateInsert("m", []string{"time", "k1", "k2", "i"})
-	assert.Equal(t, `INSERT INTO "public"."m"("time","k1","k2","i") VALUES($1,$2,$3,$4)`, sql)
+type mockTransformer struct {
+	rows    [][]interface{}
+	current int
+	rowErr  error
+}
+
+func (mt *mockTransformer) createRowFromMetric(numColumns int, metric telegraf.Metric, targetColumns, targetTagColumns *utils.TargetColumns) ([]interface{}, error) {
+	if mt.rowErr != nil {
+		return nil, mt.rowErr
+	}
+	row := mt.rows[mt.current]
+	mt.current++
+	return row, nil
+}
+
+type mockDb struct {
+	doCopyErr               error
+	isAliveResponses        []bool
+	currentIsAliveResponse  int
+	secondsToSleepInIsAlive int64
+}
+
+func (m *mockDb) Exec(query string, args ...interface{}) (pgx.CommandTag, error) {
+	return "", nil
+}
+
+func (m *mockDb) DoCopy(fullTableName *pgx.Identifier, colNames []string, batch [][]interface{}) error {
+	return m.doCopyErr
+}
+func (m *mockDb) Query(query string, args ...interface{}) (*pgx.Rows, error) {
+	return nil, nil
+}
+func (m *mockDb) QueryRow(query string, args ...interface{}) *pgx.Row {
+	return nil
+}
+func (m *mockDb) Close() error {
+	return nil
+}
+
+func (m *mockDb) IsAlive() bool {
+	if m.secondsToSleepInIsAlive > 0 {
+		time.Sleep(time.Duration(m.secondsToSleepInIsAlive) * time.Second)
+	}
+	if m.isAliveResponses == nil {
+		return true
+	}
+	if m.currentIsAliveResponse >= len(m.isAliveResponses) {
+		return m.isAliveResponses[len(m.isAliveResponses)]
+	}
+	which := m.currentIsAliveResponse
+	m.currentIsAliveResponse++
+	return m.isAliveResponses[which]
 }
